@@ -5,3 +5,4 @@ export 'lamp.dart';
 export 'sound.dart';
 export 'define.dart';
 export 'toast.dart';
+export 'logger.dart';

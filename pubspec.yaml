@@ -10,8 +10,9 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  logging: ^1.0.2
   cron: ^0.4.0
+  logging: ^1.0.2
+  console: ^4.1.0
   soundpool: ^2.2.0
   wakelock: ^0.5.6
   vibration: ^1.7.4-nullsafety.0
@@ -24,7 +25,6 @@ dependencies:
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  flutter_lints: ^1.0.0
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
