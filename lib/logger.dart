@@ -4,10 +4,6 @@ import 'package:console/console.dart';
 
 final logger = Logger("System");
 
-Logger newInstanse({String logTag = ""}) {
-  return Logger(logTag);
-}
-
 void initLogger({Level logLevel = Level.FINE, bool showColor = false}) {
   const String colorEnd = "{{@end}}";
   const String logNameColor = "{{@dark_blue}}";
