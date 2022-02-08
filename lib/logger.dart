@@ -3,12 +3,16 @@ import 'package:logging/logging.dart';
 import 'package:console/console.dart';
 
 final logger = Logger("System");
+final logOutputDevice defaultDevice = ConsoleDevice();
 
-void initLogger({Level logLevel = Level.FINE, bool showColor = false}) {
+void initLogger(
+    {Level logLevel = Level.FINE,
+    bool showColor = false,
+    List<logOutputDevice>? outputDevices}) {
   const String colorEnd = "{{@end}}";
   const String logNameColor = "{{@dark_blue}}";
   Logger.root.level = logLevel;
-  Logger.root.onRecord.listen((event) {
+  Logger.root.onRecord.listen((event) async {
     String color = "{{@yellow}}";
     final String colorEnd = "{{@end}}";
     switch (event.level.value) {
@@ -38,15 +42,26 @@ void initLogger({Level logLevel = Level.FINE, bool showColor = false}) {
         break;
     }
     if (event.level >= logLevel) {
+      String logmsg = "";
       if (showColor) {
-        print(format(
+        logmsg = format(
             "${DateTime.now().toString()} - $logNameColor[${event.loggerName}]$colorEnd - $color${event.level.toString()}$colorEnd : $color${event.message}$colorEnd",
-            style: VariableStyle.DOUBLE_BRACKET));
+            style: VariableStyle.DOUBLE_BRACKET);
       } else {
-        print(
-            "${DateTime.now().toString()} - [${event.loggerName}] - ${event.level.toString()} : ${event.message}");
+        logmsg =
+            "${DateTime.now().toString()} - [${event.loggerName}] - ${event.level.toString()} : ${event.message}";
       }
-      // log("${DateTime.now().toString()} -- ${event.level.toString()} : ${event.message}",time:DateTime.now(),name: event.loggerName,level: 0);
+      if (outputDevices != null) {
+        if (outputDevices.isNotEmpty) {
+          for (logOutputDevice oneDevice in outputDevices) {
+            await oneDevice.output(logmsg);
+          }
+        } else {
+          await defaultDevice.output(logmsg);
+        }
+      } else {
+        await defaultDevice.output(logmsg);
+      }
     }
   });
 }
@@ -68,5 +83,28 @@ void largeLog(dynamic msg, {Logger? logHandle, Level level = Level.FINER}) {
       oneLine = oneLine.substring(maxPrintLength);
     }
     logHandle.log(level, oneLine);
+  }
+}
+
+abstract class logOutputDevice {
+  logOutputDevice init();
+
+  Future<void> output(String log);
+
+  void dismiss();
+}
+
+class ConsoleDevice implements logOutputDevice {
+  @override
+  ConsoleDevice init() {
+    return this;
+  }
+
+  @override
+  void dismiss() {}
+
+  @override
+  Future<void> output(String log) async {
+    print(log);
   }
 }
