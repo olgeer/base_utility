@@ -1,6 +1,6 @@
 // import 'dart:developer';
 import 'package:logging/logging.dart';
-import 'package:console/console.dart';
+import 'package:console/console.dart' as con;
 
 final logger = Logger("System");
 final logOutputDevice defaultDevice = ConsoleDevice();
@@ -44,9 +44,9 @@ void initLogger(
     if (event.level >= logLevel) {
       String logmsg = "";
       if (showColor) {
-        logmsg = format(
+        logmsg = con.format(
             "${DateTime.now().toString()} - $logNameColor[${event.loggerName}]$colorEnd - $color${event.level.toString()}$colorEnd : $color${event.message}$colorEnd",
-            style: VariableStyle.DOUBLE_BRACKET);
+            style: con.VariableStyle.DOUBLE_BRACKET);
       } else {
         logmsg =
             "${DateTime.now().toString()} - [${event.loggerName}] - ${event.level.toString()} : ${event.message}";
