@@ -8,6 +8,8 @@ typedef contextProc = Function(BuildContext context);
 typedef actionCall = Function();
 typedef voidProc = Function();
 
+enum RequestMethod { get, post }
+
 extension MatchExtension on Schedule {
   bool match(DateTime now) {
     if (seconds?.contains(now.second) == false) return false;

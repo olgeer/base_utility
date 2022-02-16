@@ -48,6 +48,8 @@ class Vibrate {
     }
   }
 
+  static void vibrate() => mediumVibrate();
+
   static void longVibrate() =>
       vibrateCustom(pattern: [100, 500, 100, 500, 100, 500, 100, 500]);
 
