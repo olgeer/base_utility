@@ -616,3 +616,5 @@ Future<void> upgradeApk(String url, {String? fileName}) async {
   await RUpgrade.upgrade(url,
       fileName: fileName, isAutoRequestInstall: true, useDownloadManager: true);
 }
+
+bool isPhone() => Platform.isIOS || Platform.isAndroid;
