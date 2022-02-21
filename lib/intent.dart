@@ -13,7 +13,7 @@ Future<void> intentView(String uri) async {
 
 Future<void> weixinQr() async => await intentView("weixin://qr");
 
-Future<void> browerWeb(String url) async => await intentView(url);
+Future<void> browseWeb(String url) async => await intentView(url);
 
 Future<void> openApp(String packageName, String componentName) async {
   if (!Platform.isAndroid) return;
