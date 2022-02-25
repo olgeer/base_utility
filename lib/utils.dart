@@ -3,18 +3,11 @@ import 'dart:io';
 import 'dart:typed_data';
 import 'dart:math';
 
-// import 'package:basic_utils/basic_utils.dart';
-import 'package:auto_orientation/auto_orientation.dart';
 import 'package:dio/dio.dart';
-import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:fast_gbk/fast_gbk.dart';
 import 'package:dio/adapter.dart';
-
-// import 'package:html/dom.dart';
 import 'package:hash/hash.dart' as hash;
 import 'package:path/path.dart' as p;
-import 'package:r_upgrade/r_upgrade.dart';
 import 'logger.dart';
 import 'define.dart';
 
@@ -255,21 +248,6 @@ String int2Str(int value, {int width = 2}) {
   return s;
 }
 
-int rgbCalc(int value, int change) {
-  int t = value + change;
-  if (t < 0) t = 0;
-  if (t > 255) t = 255;
-  return t;
-}
-
-Color shade(Color originColor, int level) {
-  return Color.fromARGB(
-      originColor.alpha,
-      rgbCalc(originColor.red, level * 30),
-      rgbCalc(originColor.green, level * 30),
-      rgbCalc(originColor.blue, level * 30));
-}
-
 String? filterWebDescribe(String? html) {
   if (html == null) return null;
   return html
@@ -332,10 +310,6 @@ String? read4File(dynamic file) {
     }
   } else
     return null;
-}
-
-Future<String> read4Asset(String assetPath) async {
-  return await rootBundle.loadString(assetPath);
 }
 
 String getCurrentPath() {
@@ -458,8 +432,10 @@ Future<String?> saveUrlFile(String url,
   return urlFile.path;
 }
 
-Future<Response?> call(
-    {int retryTimes: 3, int seconds = 2, required FutureCall retryCall}) async {
+typedef FutureCall = Future<Response?> Function();
+
+Future<Response?> call(FutureCall retryCall,
+    {int retryTimes: 3, int seconds = 2}) async {
   Response? resp;
   do {
     retryTimes--;
@@ -509,20 +485,18 @@ Future<String?> getHtml(String sUrl,
   };
 
   Response? listResp = await call(
-      seconds: seconds,
-      retryTimes: retryTimes,
-      retryCall: () async {
-        try {
-          if (method == RequestMethod.get) {
-            return await dio!.get(sUrl,
-                queryParameters: queryParameters,
-                options: Options(
-                    headers: headers, responseType: ResponseType.bytes));
-          } else {
-            return await dio!.post(sUrl,
-                // queryParameters: queryParameters,
-                options: Options(
-                  headers: headers,
+          () async {
+    try {
+      if (method == RequestMethod.get) {
+        return await dio!.get(sUrl,
+            queryParameters: queryParameters,
+            options:
+                Options(headers: headers, responseType: ResponseType.bytes));
+      } else {
+        return await dio!.post(sUrl,
+            // queryParameters: queryParameters,
+            options: Options(
+              headers: headers,
                   responseType: ResponseType.bytes,
                   // contentType: "application/x-www-form-urlencoded"
                 ),
@@ -537,18 +511,17 @@ Future<String?> getHtml(String sUrl,
               newUrl =
                   "${newUrl.contains("http") ? "" : getDomain(sUrl)}$newUrl";
               logger.finer("status code:302 and redirect to $newUrl");
-              return await dio!.get(newUrl,
-                  options: Options(responseType: ResponseType.bytes));
-            } catch (e) {
-              print(e);
-              return null;
-            }
-          } else {
-            // print(e);
-            return null;
-          }
+              return await dio!.get(newUrl, options: Options(responseType: ResponseType.bytes));
+        } catch (e) {
+          print(e);
+          return null;
         }
-      });
+      } else {
+        // print(e);
+        return null;
+      }
+    }
+  }, seconds: seconds, retryTimes: retryTimes);
 
   if (listResp != null && listResp.statusCode == 200) {
     try {
@@ -564,18 +537,6 @@ Future<String?> getHtml(String sUrl,
   }
 
   return html;
-}
-
-Future<String?> readResource(String resUri) async {
-  return resUri.startsWith("http")
-      ? await getHtml(resUri)
-      : resUri.startsWith("file")
-          ? read4File(resUri)
-          : await read4Asset(resUri);
-}
-
-Future<dynamic> getJsonResource(String resUri) async {
-  return jsonDecode((await readResource(resUri)) ?? "{}");
 }
 
 String getDomain(String url) {
@@ -732,21 +693,6 @@ bool compareGesture(List<int> first, List<int> second) {
     if (first[i] != second[i]) return false;
   }
   return true;
-}
-
-///设置屏幕旋转使能状态
-void setRotateMode({bool canRotate = true}) {
-  if (canRotate) {
-    AutoOrientation.fullAutoMode();
-  } else {
-    AutoOrientation.portraitUpMode();
-  }
-  // Logger().debug("NovelReader", "canRotate:$canRotate");
-}
-
-Future<void> upgradeApk(String url, {String? fileName}) async {
-  await RUpgrade.upgrade(url,
-      fileName: fileName, isAutoRequestInstall: true, useDownloadManager: true);
 }
 
 bool isPhone() => Platform.isIOS || Platform.isAndroid;
