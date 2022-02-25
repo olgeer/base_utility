@@ -7,6 +7,7 @@ typedef eventCall = Function(dynamic value);
 typedef contextProc = Function(BuildContext context);
 typedef actionCall = Function();
 typedef voidProc = Function();
+typedef FutureCall = Future<Response?> Function();
 
 enum RequestMethod { get, post }
 

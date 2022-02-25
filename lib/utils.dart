@@ -2,11 +2,16 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 import 'dart:math';
-import 'package:basic_utils/basic_utils.dart';
+
+// import 'package:basic_utils/basic_utils.dart';
 import 'package:auto_orientation/auto_orientation.dart';
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:http/http.dart';
+import 'package:fast_gbk/fast_gbk.dart';
+import 'package:dio/adapter.dart';
+
+// import 'package:html/dom.dart';
 import 'package:hash/hash.dart' as hash;
 import 'package:path/path.dart' as p;
 import 'package:r_upgrade/r_upgrade.dart';
@@ -199,6 +204,20 @@ String languageCode2Text(String code) {
   return transMap[code] ?? "中文";
 }
 
+String shortString(String content, {int limit = 200}) {
+  String ret = content;
+  if (ret.length > limit) ret = "${ret.substring(0, limit)} ... ";
+  return ret;
+}
+
+Map<String, dynamic> cmdLowcase(dynamic ac) {
+  Map<String, dynamic> newAc = {};
+  Map.castFrom(ac as Map<String, dynamic>).forEach((key, value) {
+    newAc.putIfAbsent((key as String).toLowerCase(), () => value);
+  });
+  return newAc;
+}
+
 String timestamp() => DateTime.now().millisecondsSinceEpoch.toString();
 
 String dateTime() => DateTime.now().toString();
@@ -289,19 +308,22 @@ bool fileRename(String beforeName, String afterName) {
   return false;
 }
 
-String save2File(String filePath, String content) {
-  File saveFile = File(filePath);
+void save2File(String filename, String content,
+    {FileMode fileMode = FileMode.append, Encoding encoding = utf8}) {
+  logger.finer("Save file:$filename");
 
-  if (saveFile.existsSync()) saveFile.deleteSync();
-  saveFile.createSync(recursive: true);
+  File saveFile = File(filename);
+
+  if (!saveFile.existsSync()) saveFile.createSync(recursive: true);
 
   saveFile.writeAsStringSync(content,
-      mode: FileMode.write, flush: true, encoding: Utf8Codec());
-  return saveFile.path;
+      mode: fileMode, encoding: encoding, flush: true);
 }
 
-String? read4File(String filePath) {
-  File readFile = File(filePath);
+String? read4File(dynamic file) {
+  late File readFile;
+  if (file is String) readFile = File(file);
+  if (file is File) readFile = file;
   if (readFile.existsSync()) {
     try {
       return readFile.readAsStringSync(encoding: Utf8Codec());
@@ -316,55 +338,125 @@ Future<String> read4Asset(String assetPath) async {
   return await rootBundle.loadString(assetPath);
 }
 
+String getCurrentPath() {
+  return Directory.current.path;
+}
+
+String strLowcase(dynamic str) {
+  // String ret=((str as String)??"").toLowerCase();
+  return (str as String).toLowerCase();
+}
+
+Encoding getEncoding(String charset) {
+  return "utf8".compareTo(strLowcase(charset)) == 0 ? utf8 : gbk;
+}
+
 Future<Response?> getUrlFile(String url,
-    {int retry = 3, int seconds = 3}) async {
+    {int retry = 3, int seconds = 3, bool debugMode = false}) async {
   Response? tmp;
+  Dio? dio;
+
+  if (dio == null)
+    dio = Dio(BaseOptions(
+      connectTimeout: 5000,
+      receiveTimeout: 5000,
+    ));
+
+  if (debugMode)
+    dio.interceptors.add(LogInterceptor(request: true, responseHeader: true));
 
   do {
     try {
-      tmp = await HttpUtils.getForFullResponse(url);
+      tmp = await dio.get(url,
+          options: Options(responseType: ResponseType.bytes));
     } catch (e) {
-      print("get file error:$e");
-      await Future.delayed(Duration(seconds: seconds));
+      if (e is DioError) {
+        // logger.warning("DioErrorType : ${e.type.toString()}");
+        switch (e.type) {
+          case DioErrorType.receiveTimeout:
+            logger.warning("Receive Timeout! When get file $url . Retry ...");
+            await Future.delayed(Duration(seconds: seconds));
+            break;
+          case DioErrorType.connectTimeout:
+            logger.warning("Connect Timeout! When get file $url . Retry ...");
+            await Future.delayed(Duration(seconds: seconds));
+            break;
+          case DioErrorType.response:
+            switch (e.response?.statusCode ?? 505) {
+              case 404:
+                logger.warning("$url not found. [404]");
+                retry = 0;
+                break;
+              case 500:
+                logger.warning("$url background service error. [500]");
+                retry = 0;
+                break;
+              default:
+                logger.warning(
+                    "StatusCode:[${e.response?.statusCode ?? "505"}] get file [$url] error:${e.message} ");
+                await Future.delayed(Duration(seconds: seconds));
+                break;
+            }
+            break;
+          default:
+            logger.warning(
+                "DioErrorType : ${e.type}], get file [$url] error : ${e.message}");
+            await Future.delayed(Duration(seconds: seconds));
+        }
+      }
     }
-  } while ((tmp == null || tmp.statusCode != 200) && --retry > 0);
+  } while ((tmp == null || (tmp.statusCode ?? 0) != 200) && --retry > 0);
 
-  return tmp?.statusCode == 200 ? tmp : null;
+  return (tmp?.statusCode ?? 0) == 200 ? tmp : null;
 }
 
-Future<String?> saveUrlFile(String url, String saveDir,
-    {String? saveFileWithoutExt, int retry = 3, int seconds = 3}) async {
-  Response? tmpResp = await getUrlFile(url, retry: retry, seconds: seconds);
-  // largePrint(tmpResp.headers);
-  // if(tmpResp!=null && tmpResp.headers['Content-Length']!=null && int.parse(tmpResp.headers['Content-Length'])>0) {
-  if (tmpResp != null) {
-    if (tmpResp.bodyBytes.length > 0) {
-      List<String> tmpSpile = url.split("//")[1].split("/");
-      String fileExt;
-      if (tmpSpile.last.length > 0 && tmpSpile.last.split(".").length > 1) {
-        if (saveFileWithoutExt == null || saveFileWithoutExt.length == 0) {
-          saveFileWithoutExt = saveDir + "/" + tmpSpile.last.split(".")[0];
-        }
-        fileExt = tmpSpile.last.split(".")[1];
-      } else {
-        if (saveFileWithoutExt == null || saveFileWithoutExt.length == 0) {
-          saveFileWithoutExt = saveDir + "/" + genKey(lenght: 12);
-        }
-        fileExt = tmpResp.headers['Content-Type']?.split("/")[1] ?? "unknow";
-      }
-
-      File urlFile = File("$saveFileWithoutExt.$fileExt");
-      if (urlFile.existsSync()) urlFile.deleteSync();
-      urlFile.createSync(recursive: true);
-      urlFile.writeAsBytesSync(tmpResp.bodyBytes.toList(),
-          mode: FileMode.write, flush: true);
-      return urlFile.path;
+Future<String?> saveUrlFile(String url,
+    {String? saveFileWithoutExt,
+    FileMode fileMode = FileMode.write,
+    int retry = 3,
+    int seconds = 3}) async {
+  // if (tmpResp.data > 0) {
+  List<String> tmpSpile = url.split("//")[1].split("/");
+  String? fileExt;
+  if (tmpSpile.last.length > 0 && tmpSpile.last.split(".").length > 1) {
+    if (saveFileWithoutExt == null || saveFileWithoutExt.length == 0) {
+      saveFileWithoutExt = getCurrentPath() + "/" + tmpSpile.last.split(".")[0];
+    }
+    fileExt = tmpSpile.last.split(".")[1];
+  } else {
+    if (saveFileWithoutExt == null || saveFileWithoutExt.length == 0) {
+      saveFileWithoutExt = genKey(lenght: 12);
     }
   }
-  return null;
-}
 
-typedef FutureCall = Future<Response> Function();
+  File urlFile = File("$saveFileWithoutExt.${fileExt ?? ""}");
+  if (urlFile.existsSync() && fileMode == FileMode.write) {
+    urlFile.deleteSync();
+  }
+  if (!urlFile.existsSync()) {
+    Response? tmpResp = await getUrlFile(url, retry: retry, seconds: seconds);
+    if (tmpResp != null) {
+      if (fileExt == null) {
+        fileExt = tmpResp.headers.value('Content-Type')?.split("/")[1];
+        urlFile = File("$saveFileWithoutExt.${fileExt ?? ""}");
+      }
+
+      logger.finer("File:${urlFile.path}");
+
+      urlFile.createSync(recursive: true);
+      urlFile.writeAsBytesSync(tmpResp.data.toList(),
+          mode: fileMode, flush: true);
+
+      logger.fine("Save $url to ${urlFile.path} is OK !");
+    } else {
+      logger.warning("--Download $url is failed !");
+      return null;
+    }
+  } else {
+    logger.fine("Not save $url to ${urlFile.path} because it was existed !");
+  }
+  return urlFile.path;
+}
 
 Future<Response?> call(
     {int retryTimes: 3, int seconds = 2, required FutureCall retryCall}) async {
@@ -382,55 +474,95 @@ Future<Response?> call(
   return resp;
 }
 
-Future<String?> getHtml(String? sUrl,
-    {Map<String, String>? headers,
-    Map<String, String>? queryParameters,
+Future<String?> getHtml(String sUrl,
+    {Map<String, dynamic>? headers,
+    Map<String, dynamic>? queryParameters,
     String? body,
     RequestMethod method = RequestMethod.get,
     Encoding encoding = utf8,
     int retryTimes = 3,
     int seconds = 5,
-    String? debugId}) async {
+    String? debugId,
+    bool debugMode = false}) async {
+  Dio? dio;
   String? html;
   // Logger().debug("getHtml-[${debugId ?? ""}]", "Ready getHtml: [$sUrl]");
-  if (sUrl != null) {
-    Response? listResp = await call(
-        seconds: seconds,
-        retryTimes: retryTimes,
-        retryCall: () async {
-          try {
-            if (method == RequestMethod.get) {
-              return await HttpUtils.getForFullResponse(sUrl,
-                  queryParameters: queryParameters, headers: headers);
-            } else {
-              return await HttpUtils.postForFullResponse(sUrl,
-                  queryParameters: queryParameters,
-                  headers: headers,
-                  body: body);
-            }
-          } catch (e) {
-            if (e is HttpResponseException && int.parse(e.statusCode) == 302) {
-              String newUrl = "${getDomain(sUrl)}${e.headers!["location"]}";
-              // print("status code:302 and redirect to $newUrl");
-              return await HttpUtils.getForFullResponse(newUrl);
-            } else
-              throw e;
-          }
-        });
+  // logger.fine("$body");
 
-    if (listResp != null && listResp.statusCode == 200) {
-      try {
-        html = encoding.decode(listResp.bodyBytes);
-      } catch (e) {
-        // if(encoding.name.contains("gb") && isPhone()){
-        //   html = await CharsetConverter.decode("GB18030",listResp.bodyBytes);
-        // }else{
-        print("Response error[$retryTimes]:$e");
-        return null;
-        // }
-      }
+  if (dio == null)
+    dio = Dio(BaseOptions(
+      connectTimeout: 5000,
+      receiveTimeout: 3000,
+      sendTimeout: 2000,
+    ));
+
+  if (debugMode) {
+    dio.interceptors.add(LogInterceptor(request: true, responseHeader: true));
+  }
+
+  //解决ssl证书过期无法访问的问题
+  (dio.httpClientAdapter as DefaultHttpClientAdapter).onHttpClientCreate =
+      (client) {
+    client.badCertificateCallback = (cert, host, port) {
+      return true;
+    };
+  };
+
+  Response? listResp = await call(
+      seconds: seconds,
+      retryTimes: retryTimes,
+      retryCall: () async {
+        try {
+          if (method == RequestMethod.get) {
+            return await dio!.get(sUrl,
+                queryParameters: queryParameters,
+                options: Options(
+                    headers: headers, responseType: ResponseType.bytes));
+          } else {
+            return await dio!.post(sUrl,
+                // queryParameters: queryParameters,
+                options: Options(
+                  headers: headers,
+                  responseType: ResponseType.bytes,
+                  // contentType: "application/x-www-form-urlencoded"
+                ),
+                data: body);
+          }
+        } catch (e) {
+          if (e is DioError &&
+              e.response?.statusCode == 302 &&
+              e.response?.headers["location"] != null) {
+            try {
+              String newUrl = e.response!.headers["location"]!.first;
+              newUrl =
+                  "${newUrl.contains("http") ? "" : getDomain(sUrl)}$newUrl";
+              logger.finer("status code:302 and redirect to $newUrl");
+              return await dio!.get(newUrl,
+                  options: Options(responseType: ResponseType.bytes));
+            } catch (e) {
+              print(e);
+              return null;
+            }
+          } else {
+            // print(e);
+            return null;
+          }
+        }
+      });
+
+  if (listResp != null && listResp.statusCode == 200) {
+    try {
+      html = encoding.decode(listResp.data);
+    } catch (e) {
+      // if(encoding.name.contains("gb") && (Platform.isAndroid||Platform.isIOS)){
+      //   html = await CharsetConverter.decode("GB18030",listResp.data);
+      // }else{
+      logger.warning("Charset decode error");
+      return null;
+      // }
     }
   }
+
   return html;
 }
 

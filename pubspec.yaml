@@ -13,6 +13,8 @@ dependencies:
   android_intent_plus: ^3.1.1
   auto_orientation: ^2.2.1
   cron: ^0.4.0
+  dio: ^4.0.0
+  fast_gbk: ^1.0.0
   logging: ^1.0.2
   console: ^4.1.0
   device_info: ^2.0.3
@@ -34,6 +36,10 @@ dependencies:
   phone_lamp:
     git:
       url: https://github.com/olgeer/phone_lamp.git
+      ref: main
+  xpath_parse:
+    git:
+      url: git://github.com/olgeer/xpath.git
       ref: main
 
 dev_dependencies:
