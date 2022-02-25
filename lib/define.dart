@@ -1,10 +1,6 @@
 import 'package:cron/cron.dart';
-import 'package:get/get.dart';
-import 'package:flutter/material.dart';
-import 'package:package_info_plus/package_info_plus.dart';
 
 typedef eventCall = Function(dynamic value);
-typedef contextProc = Function(BuildContext context);
 typedef actionCall = Function();
 typedef voidProc = Function();
 
@@ -47,25 +43,3 @@ void intervalAction(actionCall? processer, {List<int>? millisecondInterval}) {
 /// Do nothing function
 void DNT() {}
 
-class AppController extends GetxController {
-  var logs = [].obs;
-  var testMode = false.obs;
-  var version = "未知".obs;
-
-  Future<void> init() async {
-    await getAppVersion();
-  }
-
-  addLog(String log) {
-    if (logs.length > 1000) logs.removeAt(0);
-    logs.add(log);
-  }
-
-  toggleTestMode() => testMode.toggle();
-
-  Future<String> getAppVersion() async {
-    PackageInfo packageInfo = await PackageInfo.fromPlatform();
-    version = packageInfo.version.obs;
-    return packageInfo.version;
-  }
-}

@@ -1,10 +1,36 @@
 import 'dart:convert';
-
 import 'package:auto_orientation/auto_orientation.dart';
+import 'package:get/get.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:r_upgrade/r_upgrade.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'utils.dart';
+
+typedef contextProc = Function(BuildContext context);
+
+class AppController extends GetxController {
+  var logs = [].obs;
+  var testMode = false.obs;
+  var version = "未知".obs;
+
+  Future<void> init() async {
+    await getAppVersion();
+  }
+
+  addLog(String log) {
+    if (logs.length > 1000) logs.removeAt(0);
+    logs.add(log);
+  }
+
+  toggleTestMode() => testMode.toggle();
+
+  Future<String> getAppVersion() async {
+    PackageInfo packageInfo = await PackageInfo.fromPlatform();
+    version = packageInfo.version.obs;
+    return packageInfo.version;
+  }
+}
 
 ///设置屏幕旋转使能状态
 void setRotateMode({bool canRotate = true}) {
@@ -40,6 +66,9 @@ Future<String> read4Asset(String assetPath) async {
   return await rootBundle.loadString(assetPath);
 }
 
+/// http开始则为url
+/// file开始则为文件
+/// 其余则为asset
 Future<String?> readResource(String resUri) async {
   return resUri.startsWith("http")
       ? await getHtml(resUri)
