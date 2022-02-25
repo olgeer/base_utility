@@ -385,6 +385,7 @@ Future<Response?> getUrlFile(String url,
 
 Future<String?> saveUrlFile(String url,
     {String? saveFileWithoutExt,
+    String? savePath,
     FileMode fileMode = FileMode.write,
     int retry = 3,
     int seconds = 3}) async {
@@ -393,7 +394,8 @@ Future<String?> saveUrlFile(String url,
   String? fileExt;
   if (tmpSpile.last.length > 0 && tmpSpile.last.split(".").length > 1) {
     if (saveFileWithoutExt == null || saveFileWithoutExt.length == 0) {
-      saveFileWithoutExt = getCurrentPath() + "/" + tmpSpile.last.split(".")[0];
+      saveFileWithoutExt =
+          (savePath ?? getCurrentPath()) + "/" + tmpSpile.last.split(".")[0];
     }
     fileExt = tmpSpile.last.split(".")[1];
   } else {

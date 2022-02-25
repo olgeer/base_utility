@@ -7,6 +7,7 @@ export 'define.dart';
 export 'toast.dart';
 export 'logger.dart';
 export 'utils.dart';
+export 'ui_utils.dart';
 export 'device_info.dart';
 export 'intent.dart';
 export 'encrypt.dart';
