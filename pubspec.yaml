@@ -23,7 +23,7 @@ dependencies:
   soundpool: ^2.2.0
   wakelock: ^0.6.1+1
   vibration: ^1.7.4-nullsafety.0
-  flutter_easyloading: ^3.0.3
+  flutter_easyloading: ^3.0.5
   package_info_plus: ^1.4.0
   get: ^4.6.1
   get_storage: ^2.0.3
@@ -39,7 +39,7 @@ dependencies:
       ref: main
   xpath_parse:
     git:
-      url: git://github.com/olgeer/xpath.git
+      url: https://github.com/olgeer/xpath.git
       ref: main
 
 dev_dependencies:

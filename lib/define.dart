@@ -59,8 +59,8 @@ class Cache {
     }
   }
 
-  T? read<T>(String key) {
-    return _cache.read(key);
+  T? read<T>(String key, {T? defValue}) {
+    return _cache.read(key) ?? defValue;
   }
 
   Future<void> write(String key, dynamic value) async {
