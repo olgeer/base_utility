@@ -1,3 +1,4 @@
+import 'package:base_utility/base_utility.dart';
 import 'package:cron/cron.dart';
 
 typedef eventCall = Function(dynamic value);
@@ -43,3 +44,30 @@ void intervalAction(actionCall? processer, {List<int>? millisecondInterval}) {
 /// Do nothing function
 void DNT() {}
 
+class Cache {
+  static GetStorage _cache = GetStorage();
+
+  Cache();
+
+  Future<void> init() async {
+    try {
+      if (!(await _cache.initStorage)) {
+        await GetStorage.init();
+      }
+    } catch (err) {
+      throw err;
+    }
+  }
+
+  T? read<T>(String key) {
+    return _cache.read(key);
+  }
+
+  Future<void> write(String key, dynamic value) async {
+    _cache.write(key, value);
+  }
+
+  Future<void> remove(String key) async {
+    _cache.remove(key);
+  }
+}

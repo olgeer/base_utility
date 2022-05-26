@@ -1,7 +1,7 @@
 name: base_utility
 description: Base utility set
-version: 1.1.2
-homepage: http://olgeer.3322.org:8888
+version: 1.1.3
+homepage: http://olgeer.3322.org:14080
 
 environment:
   sdk: ">=2.15.1 <3.0.0"
@@ -30,7 +30,7 @@ dependencies:
   hash: ^1.0.4
   path: ">=1.0.0 <2.0.0"
   r_upgrade: ^0.3.6
-  basic_utils: ^3.7.0
+  #  basic_utils: ^3.7.0
   share_plus: ^3.1.0
   #  shared_preferences: ^2.0.7
   phone_lamp:
